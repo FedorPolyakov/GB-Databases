@@ -1,0 +1,205 @@
+Пример базы данных сервиса "Яндекс.Еда". Какой она могла бы быть.
+Данная БД позволяет хранить данные пользователей(заказчиков), данные ресторанов, производящих доставку еды, данные заказов пользователей. Так же при помощи данной БД можно смотреть данные о рейтинге ресторанов, менять рейтинг в зависимости от оценки пользователей и т.д. Данная БД позволяет производить анализ данных о заказах. И т.д. и т.п.
+
+
+ОПИСАНИЕ ТАБЛИЦ:
+В базе данных существует 15 таблиц:
+1. customers - реализует таблицу пользователей-заказчиков, содержит данные имени, фамилии, номера телефона и эл.почты, поле заказчика, его дне рождения и согласии на рассылку реклам и акции по sms и эл.почте а так же когда этот пользователь зарегестрировался и когда последний раз изменял свои данные;
+
+2. customers_address - реализует таблицу адрессов пользователей. Содержит 2 поля - id адреса и сам адрес в виде текста(для простоты). В этой таблице хранятся адреса пользователей, без привязки к id пользователя(т.к. например с одного адреса могут быть заказы от разных пользователей);
+
+3. restaurants - таблица ресторанов, совершающих доставку. В данной таблице содержатся данные о: id ресторана, название ресторана, рейтинг ресторана, данные о привязки ресторана к Яндекс.Еда и данные об последнем изменении своих данных.
+
+4. rest_addresses - таблица адресов ресторанов: id адреса, id ресторана, адрес текстом, координаты (долгота, широта). Координаты нужны для определения близости ресторана к пользователю, что дает возможность выбирать пользователю доставку, которая скорее всего будет быстрой.
+
+5. category - таблица категорий еды, к которой относят себя рестораны и еда(например может быть американская кухня, европейская, фастфуд, бургеры, полезная еда и т.д.). Содержит 3 поля: id, category_name, created_at;
+
+6. rest_category - таблица отношений ресторанов и категорий. Два поля: rest_id, cat_id. Позволяет давать ресторану не только одну категорию еды.
+
+7 dishes - таблица блюд меню (например борщ, сэндвич с рыбой и т.д.). В данной таблице содержатся данные о: id данного элемента, его название, id ресторана, в котором он представлен, описание блюда меню, его рецепт, цена, вес, данные о добавлении в меню и данные об изменении блюда(created_at, updated_at);
+
+8. dishes_category - таблица отношений блюд и категории еды. Например блюдо: бутерброд с красной икрой может относится к категории русская кузня и к категории рыба.
+
+9. rest_dishes - таблица отношений блюд и ресторанов. Возможна данная таблица не нужна...
+
+10. orders - таблица заказов. В данной таблице содержится: id заказа, id ресторана, id заказчика, время заказа, время доставки, id адреса заказчика, цена, вес заказа, id курьера, id способа оплаты;
+
+11. orders_dishes - таблица отношений блюд и заказа. В данной таблице содержится: id блюда, id заказа,  количество блюда;
+
+12. orders_customers_addresses - данная таблица содержит: id заказа, id ресторана от куда был заказ, id заказчика, время заказа. Данная таблица заполняется автоматически по триггеру по добавлению записей в таблицу заказов.  
+
+13. courier - таблица курьеров. В ней содержатся их id, имена, рейтинг, телефон, created_at, updated_at;
+
+14. payment - таблица способов оплаты : id способа, название.;
+
+15. remoutless - таблица удаленности ресторана от пользователя. Имеет 5 значений расположения ресторана: очень горячо, горячо, тепло, холодно, очень холодно. Данная таблица ни с какой таблицей не связана. Она нужна для группирования ресторанов по типу близости к пользователю, т.е. у нас будут геоданные пользователя(долгота, широта), у нас есть координаты каждого ресторана и при помощи джойна этой таблицы можно будет группировать рестораны.
+
+СКРИПТЫ СОЗДАНИЯ ТАБЛИЦ:
+-- CREATE DATABASE yandex_eda;
+-- USE yandex_eda;
+
+DROP TABLE IF EXISTS customers;
+CREATE TABLE customers (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	first_name VARCHAR(40) NOT NULL,
+	email VARCHAR(40) UNIQUE NOT NULL,
+	phone VARCHAR(15) UNIQUE NOT NULL,
+	gender ENUM ('male','female'),
+	birthday_at DATE,
+	ad_email TINYINT(1),
+	ad_sms TINYINT(1),
+	created_at DATETIME DEFAULT NOW(),
+	updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);
+
+DROP TABLE IF EXISTS customers_addresses;
+CREATE TABLE customers_addresses (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+-- 	customer_id INT UNSIGNED NOT NULL,
+	address TEXT(100) NOT NULL
+);
+
+DROP TABLE IF EXISTS restaurants;
+CREATE TABLE restaurants (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR(30) NOT NULL,
+	rest_rating ENUM('1','2','3','4','5'),
+	created_at DATETIME DEFAULT NOW(),
+	updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);
+
+DROP TABLE IF EXISTS rest_addresses;
+CREATE TABLE rest_addresses(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	rest_id INT UNSIGNED NOT NULL,
+	adress TEXT NOT NULL,
+	longitude DECIMAL(4,2) NOT NULL,
+	latitude DECIMAL(4,2) NOT NULL
+);
+
+DROP TABLE IF EXISTS category;
+CREATE TABLE category (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	category_name VARCHAR(40) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW()
+);
+
+DROP TABLE IF EXISTS rest_category;
+CREATE TABLE rest_category(
+	rest_id INT UNSIGNED NOT NULL,
+	cat_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (rest_id, cat_id)
+);
+
+DROP TABLE IF EXISTS dishes;
+CREATE TABLE dishes(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR (30) NOT NULL,
+	rest_id INT UNSIGNED NOT NULL,
+	description TEXT,
+	recipe TEXT,
+	price INT UNSIGNED NOT NULL,
+	weight INT UNSIGNED NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW(),
+	updated_at DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW()
+);
+
+DROP TABLE IF EXISTS dishes_category;
+CREATE TABLE dishes_category(
+	dish_id INT UNSIGNED NOT NULL,
+	cat_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (dish_id, cat_id)
+);
+
+DROP TABLE IF EXISTS rest_dishes;
+CREATE TABLE rest_dishes(
+	rest_id INT UNSIGNED NOT NULL,
+	dish_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (rest_id, dish_id)	
+);
+
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	cost FLOAT UNSIGNED NOT NULL,
+	weight FLOAT UNSIGNED NOT NULL,
+	customer_id INT UNSIGNED NOT NULL,
+	customer_address_id INT UNSIGNED NOT NULL,
+	rest_id INT UNSIGNED NOT NULL,
+	courier_id INT UNSIGNED NOT NULL,
+	payment_id INT UNSIGNED NOT NULL,
+	created_at DATETIME NOT NULL,
+	delivery_at DATETIME DEFAULT NOW()
+);
+
+DROP TABLE IF EXISTS orders_dishes;
+CREATE TABLE orders_dishes(
+	order_id INT UNSIGNED NOT NULL,
+	dish_id INT UNSIGNED NOT NULL,
+	quantity_dish INT UNSIGNED NOT NULL,
+	PRIMARY KEY (order_id, dish_id)		
+);
+
+DROP TABLE IF EXISTS orders_customers_addresses;
+ CREATE TABLE orders_customers_addresses(
+ 	order_id INT UNSIGNED NOT NULL,
+	customer_id INT UNSIGNED NOT NULL,
+ 	customer_address_id INT UNSIGNED NOT NULL,
+ 	created_at DATETIME NOT NULL,
+	PRIMARY KEY (order_id, customer_id, customer_address_id, created_at)	 
+);
+
+
+DROP TABLE IF EXISTS courier;
+CREATE TABLE courier (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR (30) NOT NULL,
+	rating_courier ENUM ('1','2','3','4','5'),
+	phone VARCHAR(15) UNIQUE NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW(),
+	updated_at DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW()
+);
+
+
+DROP TABLE IF EXISTS payment;
+CREATE TABLE payment(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	payment_name ENUM('cash and cary', 'online by card','courier and cash', 'courier and card')
+);
+
+DROP TABLE IF EXISTS remoutless;
+CREATE TABLE remoutless(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	remoutless_name ENUM ('very hot', 'hot', 'warm', 'cold','very cold')
+);
+
+
+
+-- ТРИГГЕРЫ	
+-- добавление значений в таблицу orders_customers_addresses в зависимости от добавления данных в таблицу заказов. Заполняемая таблица позволяет определять адреса заказчиков однозначно.
+CREATE TRIGGER orders_customers_addresses_insert AFTER INSERT ON orders
+FOR EACH ROW BEGIN
+	INSERT INTO orders_customers_addresses SET order_id = NEW.id
+						 , customer_id = New.customer_id
+						 , customer_address_id = NEW.customer_address_id
+						 , created_at = New.created_at;
+END//
+
+-- триггер на проверку корректности ввода данных в таблицу заказов.
+CREATE TRIGGER check_not_null_orders_insert BEFORE INSERT ON orders 
+FOR EACH ROW BEGIN
+IF ( 
+	NEW.customer_id IS NULL
+	OR NEW.rest_id IS NULL
+	OR NEW.cost IS NULL
+	OR NEW.weight IS NULL
+	OR NEW.created_at IS NULL
+	OR NEW.customer_address_id IS NULL
+	OR NEW.payment_id IS NULL
+	OR NEW.courier_id IS NULL
+	) THEN 
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'INSERT canceled';
+END IF;
+END//
+
+-- функции и процедуры пока не включал, но я их допишу.
