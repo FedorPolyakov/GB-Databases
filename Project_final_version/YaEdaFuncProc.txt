@@ -1,0 +1,42 @@
+-- процедура return_customer_money вовзращает суммарное значение денег, потреченных заданным пользователем на заказы еды.
+DELIMITER //
+DROP FUNCTION IF EXISTS return_customer_money;
+CREATE PROCEDURE return_customer_money (IN input_id INT)
+BEGIN
+	SELECT SUM(cost) FROM orders WHERE customer_id = input_id;
+END//
+DELIMITER ;
+
+CALL return_customer_money(1);
+
+-- функция выводит статус заданного пользователя в базе данных.
+-- если средний чек пользователя больше чем на 10 процентов среднего чека всех заказов то статус пользователя GOLD
+-- если средний чек пользователя лежит в пределах плюс/минус 10 процентов от среднего чека всех заказов то статус - SILVER
+-- если средний чек пользователя меньше чем на 10 процентов от среднего чека всех заказов то статус - BRONZE 
+DELIMITER //
+DROP FUNCTION IF EXISTS customer_status //
+CREATE FUNCTION customer_status(input_id INT)
+RETURNS VARCHAR(20) DETERMINISTIC 
+BEGIN
+	DECLARE customerStatus VARCHAR	(20);
+	DECLARE avg_cheque DECIMAL(10,2);
+	DECLARE avg_customer_cheque DECIMAL(10,2);
+	SELECT ROUND(AVG(cost),2) INTO avg_cheque FROM orders;
+	SELECT ROUND(AVG(cost),2) INTO avg_customer_cheque FROM orders WHERE customer_id = input_id;
+	SET customerStatus = '';
+	SET customerStatus= (CASE 
+		WHEN avg_customer_cheque > 1.1*avg_cheque THEN 'GOLD'
+		WHEN avg_customer_cheque BETWEEN  0.9*avg_cheque AND  1.1*avg_cheque THEN 'SILVER'
+		WHEN avg_customer_cheque < 0.9*avg_cheque THEN 'BRONZE'
+	END);
+RETURN customerStatus;
+END//
+DELIMITER ;
+-- вывести имя id пользователя, его статус и статус пользователя в системе.
+SELECT customer_id
+	   , customers.name 
+	   , customer_status(customer_id) AS status
+	   FROM orders
+	   JOIN customers
+		 ON orders.customer_id = customers.id 
+	  GROUP BY customer_id;

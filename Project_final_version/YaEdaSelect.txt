@@ -1,0 +1,89 @@
+Скрипты написания запросов
+
+-- INSERTED SELECTS
+
+-- вывести все заказы оплаченные картой онлайн
+SELECT id AS order_id, payment_id FROM orders WHERE payment_id = (SELECT id from payments WHERE name = 'online by card');
+
+-- JOINS
+-- вывести имя и телефон пользователей, делавшие заказы за период 2018-01-01 - 2019-01-01
+SELECT DISTINCT name, phone FROM customers
+	JOIN orders 
+	ON orders.customer_id = customers.id
+	WHERE orders.created_at BETWEEN CAST('2018-01-01' AS DATE) AND CAST('2019-01-01' AS DATE);
+
+-- вывести  имя курьеров, количество доставленных заказов и общее количество блюд, которое они доставили
+SELECT couriers.id, couriers.name, COUNT(DISTINCT orders.id) AS orders, SUM(r_orders_dishes.quantity_dish) AS QA
+	FROM r_orders_dishes
+	LEFT JOIN orders
+	ON orders.id = r_orders_dishes.order_id
+	LEFT JOIN couriers
+	ON orders.courier_id = couriers.id
+	GROUP BY orders.courier_id
+	ORDER BY couriers.id;
+
+-- вывести 5 адресов, на которые чаще всего заказывали доставку
+SELECT address FROM (
+SELECT addresses.address AS address, COUNT(orders.address_id) AS k
+	FROM addresses
+	LEFT JOIN orders
+	ON orders.address_id = addresses.id
+	GROUP BY addresses.address
+	ORDER BY k DESC
+) AS B LIMIT 5;
+
+-- вывести имена пользователей и их адреса доставок
+SELECT DISTINCT customers.id, customers.name, addresses.address  FROM customers 
+	JOIN r_customers_addresses 
+	ON r_customers_addresses.customer_id = customers.id
+	JOIN addresses
+	ON r_customers_addresses.address_id = addresses.id;
+
+	
+-- VIEWS
+-- восстановить заказ, т.е. вывести номер заказа, время создания заказа, имя заказчика,
+-- имя ресторана, откуда был заказ, название заказанного блюда и его количество
+CREATE VIEW in_order (id_order, order_date, customer_name,restaurant_name, dish_name, dish_quantity) AS 
+	(
+	SELECT orders.id
+	, orders.created_at
+	, customers.name
+	, restaurants.name
+	, dishes.name 
+	, r_orders_dishes.quantity_dish
+	FROM orders
+	LEFT JOIN customers
+	ON orders.customer_id = customers.id
+	LEFT JOIN restaurants 
+	ON  orders.restaurant_id = restaurants.id 
+	LEFT JOIN r_orders_dishes 
+	ON orders.id = r_orders_dishes.order_id
+	LEFT JOIN dishes 
+	ON dishes.id = r_orders_dishes.dish_id 
+	ORDER BY orders.id
+	);
+SELECT * FROM in_order ;
+
+-- вывести пользователя и его количество заказов из данного  ресторана,
+-- общее количество заказов из данного ресторана и долю заказов пользователя из общего числа заказов данного ресторана
+CREATE VIEW customer_orders (name, restaurant, amount_orders_from_customer_in_restaurant, amount_orders_in_resraurant, percent) AS
+(
+SELECT name
+	, restaurant
+	, amount_orders_from_customer_in_restaurant
+	, amount_orders_in_resraurant
+	, amount_orders_from_customer_in_restaurant/amount_orders_in_resraurant * 100 AS '%'
+	FROM (
+	SELECT DISTINCT 
+		c.name  AS name
+	 	, r.name AS restaurant
+		, COUNT(*) OVER (PARTITION BY o.customer_id, o.restaurant_id) AS amount_orders_from_customer_in_restaurant
+		, COUNT(*) OVER(PARTITION BY o.restaurant_id) AS amount_orders_in_resraurant
+		FROM orders o
+		LEFT JOIN customers c 
+		ON o.customer_id = c.id
+		LEFT JOIN restaurants r
+		ON o.restaurant_id = r.id
+	) AS A
+);
+SELECT * FROM customer_orders;
