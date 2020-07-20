@@ -1,0 +1,50 @@
+Данные которые я поправил в своей БД:
+1)в таблице users исправил номера телефонов по шаблону:
++ ???(код страны от 1 до 999)-???(от 100 до 999)-???-??-??,
+последние семь цифр - любые от 0 до 9.
+2)Исправил во всех таблицах даты обновления, чтобы не были раньше даты создания.
+3)в таблце media исправил колонку с размером - минимальный размер 10000 байт.
+4)в таблице media_types исправил свои значние на стандартные photo,video,audio.
+5)в таблице media исправил колонку metadata по типу "owner":"first_name last_name".
+6)В таблице friendship_status исправил свои значения на confirmed, requested, rejected.
+
+7)Для курсовой работы я выбрал сервис "Яндекс еда"
+
+Лайки
+
+можно лайкать: юзеров, сообщения, медиа данные, группы.
+Лайки ставят пользователи
+У нас будет отдельная таблица, которая хранит данные. В ней будут несколько столбцов:
+1)id лайка.
+2)id юзера, поставивший лайк.
+3)сущность лайка(что именно лайкнул пользователь).
+4)id сущности, которому поставили лайк.
+
+Так же будет отдельная таблица, содержащая сущности которые мы лайкаем.
+
+CREATE TABLE likes (
+id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+id_user INT NOT NULL,
+id_what INT NOT NULL,
+id_exactly INT NOT NULL);
+
+
+CREATE TABLE what_likes (
+id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+name VARCHAR(20) NOT NULL
+ );
+
+INSERT INTO what_likes VALUES
+(1, 'user'),
+(2, 'message'),
+(3, 'media'),
+(4, 'community');
+
+SELECT * FROM what_likes ;
+
+INSERT INTO likes VALUES 
+(1, 10, 1, 5),
+(2, 1, 3, 10),
+(3, 17, 2, 1);
+
+SELECT * FROM likes ;
