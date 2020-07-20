@@ -1,0 +1,16 @@
+Задание 1) 
+Так как на моей хостовой машине стоит WIN10, а на ВМ стоит Ubuntu. то файл .my.cnf я создал в домашней директории на ВМ. Скриншот Created_mycnf показывает содержимое этого файла, которое я вывел при помощи команды cat (пароль я зарисовал)
+Задание 2) 
+В DBeaver я создал базу данных example а в ней таблицу Users с двумя столбацами (id, name), и заполнил таблицу тремя строками(скриншот Table_Example_In_DBeaver).
+Задание 3)
+В Ubuntu, в терминале я подключился к mysql и создал пустую базу данных samples.
+CREATE DATABASE sample;
+Затем при помощи команды mysqldump я создал дамп базы данных example в файл example.sql
+mysqldump example > example.sql
+Затем я развернул дамп базы данных example в пустой базе данных sample.
+mysql sample < example.sql
+Так же на скриншоте Table_Example_In_DBeaver видно, что в DBeaver есть база данных sample.
+Сриншоты example.sql_1 и example.sql_2 показывают содержимое дамп файла.
+
+4) для создания дампа первых 100 строк таблицы help_keyword базы данных mysql можно попробовать использовать следующую команду:
+$ mysqldump --where="true limit 100" mysql help_keyword > dump_help_keyword.sql
