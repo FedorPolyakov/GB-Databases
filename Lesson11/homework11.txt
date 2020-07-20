@@ -1,0 +1,89 @@
+Практическое задание по теме “Оптимизация запросов”
+1. Создайте таблицу logs типа Archive. Пусть при каждом создании записи в таблицах users, catalogs и products в таблицу logs помещается время и дата создания записи, название таблицы, идентификатор первичного ключа и содержимое поля name.
+
+CREATE TABLE logs(
+	id_in_tbl INT UNSIGNED NOT NULL,
+	table_name CHAR(10),
+	name VARCHAR(255),
+	created_at DATETIME	
+) ENGINE=Archive;
+
+CREATE TRIGGER catalogs_logs_insert AFTER INSERT ON catalogs
+FOR EACH ROW BEGIN
+	INSERT INTO logs SET id_in_tbl = NEW.id
+						 , table_name = 'catalogs'
+						 , name = NEW.name
+						 , created_at = NOW();
+END//
+
+CREATE TRIGGER products_logs_insert AFTER INSERT ON products
+FOR EACH ROW BEGIN
+	INSERT INTO logs SET id_in_tbl = NEW.id
+						 , table_name = 'products'
+						 , name = NEW.name
+						 , created_at = NOW();
+END//
+
+CREATE TRIGGER users_logs_insert AFTER INSERT ON users
+FOR EACH ROW BEGIN
+	INSERT INTO logs SET id_in_tbl = NEW.id
+						 , table_name = 'users'
+						 , name = NEW.name
+						 , created_at = NOW();
+END//
+
+2. (по желанию) Создайте SQL-запрос, который помещает в таблицу users миллион записей.
+Создадим процедуру для помещения записей в таблицу users. Входным параметром будет необходимое количество записей.
+Для задания можно просто внутри процедуры установить значение в один миллион.
+
+CREATE PROCEDURE insert_users (IN num int)
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	WHILE i < num DO
+		INSERT INTO users (name) VALUES (CONCAT('user',i));
+		SET i = i + 1;
+		END WHILE;
+END//
+
+
+Практическое задание по теме “NoSQL”
+1. В базе данных Redis подберите коллекцию для подсчета посещений с определенных IP-адресов.
+
+SET ip:192.168.0.1 0  — здесь я устанавливаю, что по данному адресу 0 посещений
+INCR ip:192.168.0.1 — так я добавляю посещение
+GET ip:192.168.0.1 — а так я подсчитываю общее количество посещений
+
+так же можно решить другим способом:
+HSET user1 ip '192.168.0.1' --установка ip
+HSET user1 visits 0	-- установления начального значения посещений
+HINCRBY user1 visits 1 --добавление посещения
+HGET user1 visits -- просмотр количества посещений
+
+
+2. При помощи базы данных Redis решите задачу поиска имени пользователя по электронному адресу и наоборот, поиск электронного адреса пользователя по его имени.
+При помощи Lists можно попробовать сделать такое заданим следующим способом:
+Есть два списка: names (содержащий имена) и emails (содержащий эл.адрес)
+RPUSH names "Nick White"
+RPUSH names "Joe Black"
+RPUSH names "Merry Grey"
+
+RPUSH emails "nickwhite@gmail.com"
+RPUSH emails "joeblack@gmail.com"
+RPUSH emails "mgrey@gmail.com"
+
+Пусть у одного пользователя есть только один эл.адрес.
+Пусть пользователи будут уникальны.
+Пусть новая пара имя/эл.адрес добавляются в конец соответсвующих списков.
+Тогда вывести все имена и все списки можно при помощи следующих команд:
+LRANGE names 0 -1
+LRANGE emails 0 -1
+Соответственно, найдя нужное имя и нужный индекс в списке emails можно найти по этому индексу нужное имя в списке names. То же самое для обратной задачи.
+
+3. Организуйте хранение (каталогов??)категорий и товарных позиций учебной базы данных shop в СУБД MongoDB.
+
+use shop
+
+db.shop.insert({catalogs: {name: ['Processors','Motherboards','Graphic Cards']}})
+db.shop.insert({products: {name: ['Intel Core i3-8100','nVIDIA GTX-2070','ASUS ROG MAXIMUS X HERO']}})
+
+db.shop.find()
