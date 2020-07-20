@@ -1,0 +1,80 @@
+2. Подсчитать общее количество лайков, которые получили 10 самых молодых пользователей.
+
+Пока только смог подсчитать сколько раз пользователи лайкнули профили десятерых самых молодых пользователей.
+(из таблицы likes)
+SELECT user_id,
+	(SELECT CONCAT(first_name,' ',last_name) FROM users WHERE id=profiles.user_id) AS name,
+		(SELECT COUNT(*) FROM likes
+		 WHERE
+		 (target_id=profiles.user_id
+		 AND
+		 target_type_id = (SELECT id FROM target_types WHERE name = 'users')
+		 )
+		 ) AS total_likes,
+	birthday
+	FROM profiles
+	ORDER BY birthday DESC LIMIT 10;
+
+
+
+3. Определить кто больше поставил лайков (всего) - мужчины или женщины?
+SELECT 'Male' AS SEX,
+	COUNT(*) AS total
+	FROM likes
+	WHERE
+	user_id IN (SELECT user_id FROM profiles WHERE gender = 'm')
+UNION
+SELECT 'Female' AS SEX,
+	COUNT(*) AS total
+	FROM likes
+	WHERE
+	user_id IN (SELECT user_id FROM profiles WHERE gender = 'f')
+	GROUP BY SEX
+	ORDER BY total DESC LIMIT 1;
+
+4. Найти 10 пользователей, которые проявляют наименьшую активность в использовании социальной сети.
+Активностью будем считать то, сколько пользователь создал контента - т.е. сколько у него есть медиафайлов,
+постов и лайков. Соответственно, у кого их наименьшее количество - тот и наименее активен.
+
+***Правда, тут я не учел, что у пользователей вообще ничего, из выше перечисленного, может и не быть..
+
+SELECT id, first_name, last_name FROM users WHERE id IN (
+	SELECT user_id FROM (
+		SELECT user_id, COUNT(*) AS activity FROM
+			(SELECT  'posts', user_id, COUNT(*) AS total FROM posts GROUP BY user_id HAVING total = 1
+			UNION
+			SELECT  'likes', user_id, COUNT(*) AS total FROM likes GROUP BY user_id HAVING total = 1
+			UNION
+			SELECT 'media', user_id, COUNT(*) AS total FROM media GROUP BY user_id HAVING total = 1
+			ORDER BY user_id) AS A
+		GROUP BY user_id
+		HAVING activity = 1
+		ORDER BY activity) AS B) LIMIT 10;
+
+Чтобы учесть ***(условие, когда у пользователя вообще ничего нет) выполним такой запрос:
+
+SELECT id, first_name, last_name FROM users WHERE id NOT IN (
+	SELECT user_id FROM (
+		SELECT user_id, COUNT(*) AS activity FROM
+			(SELECT  'posts', user_id, COUNT(*) AS total FROM posts GROUP BY user_id 
+			UNION
+			SELECT  'likes', user_id, COUNT(*) AS total FROM likes GROUP BY user_id 
+			UNION
+			SELECT 'media', user_id, COUNT(*) AS total FROM media GROUP BY user_id 
+			ORDER BY user_id) AS A
+		GROUP BY user_id
+		ORDER BY activity) AS B)
+UNION
+SELECT id, first_name, last_name FROM users WHERE id IN (
+	SELECT user_id FROM (
+		SELECT user_id, COUNT(*) AS activity FROM
+			(SELECT  'posts', user_id, COUNT(*) AS total FROM posts GROUP BY user_id HAVING total = 1
+			UNION
+			SELECT  'likes', user_id, COUNT(*) AS total FROM likes GROUP BY user_id HAVING total = 1
+			UNION
+			SELECT 'media', user_id, COUNT(*) AS total FROM media GROUP BY user_id HAVING total = 1
+			ORDER BY user_id) AS A
+		GROUP BY user_id
+		HAVING activity = 1
+		ORDER BY activity) AS B)
+LIMIT 10;
