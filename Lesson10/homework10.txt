@@ -1,0 +1,92 @@
+1. Проанализировать какие запросы могут выполняться наиболее часто в процессе работы приложения и добавить необходимые индексы.
+
+-- users
+CREATE UNIQUE INDEX users_email_uq ON users(email);
+CREATE UNIQUE INDEX users_phone_uq ON users(phone);
+-- profiles
+CREATE INDEX profiles_birthday_idx ON profiles(birthday);
+CREATE INDEX profiles_country_idx ON profiles(country);
+CREATE INDEX profiles_city_idx ON profiles(city);
+-- messages
+CREATE INDEX messages_from_user_id_to_user_id_idx ON messages (from_user_id, to_user_id);
+-- media
+CREATE INDEX media_size_idx ON media(size);
+-- posts
+CREATE INDEX posts_user_id_community_id_idx ON posts (user_id, community_id);
+-- likes
+CREATE INDEX likes_target_id_target_type_id ON likes (target_id, target_type_id);
+-- friendship
+CREATE INDEX friendship_status_id ON friendship (status_id);
+
+
+2. Задание на оконные функции.
+Провести аналитику в разрезе групп.
+Построить запрос, который будет выводить следующие столбцы:
+имя группы
+среднее количество пользователей в группах
+самый молодой пользователь в группе
+самый пожилой пользователь в группе
+количество пользователей в группе
+всего пользователей в системе
+отношение в процентах (количество пользователей в группе / всего пользователей в системе) * 100
+
+SELECT DISTINCT c.name as name
+# следующий запрос у меня дает верный ответ, но возможно алгорит не правильный
+#	, COUNT(cu.user_id) OVER() / (SELECT COUNT(*) FROM communities) AS avg_users_in_gr
+	, (SELECT COUNT(*) FROM  users) / (SELECT COUNT(*) FROM communities) AS avg_users_in_gr
+	, FIRST_VALUE(CONCAT(u.id,' ',u.first_name,' ',u.first_name)) OVER (PARTITION BY c.id ORDER BY p.birthday) AS youngest_user
+	, FIRST_VALUE(CONCAT(u.id,' ',u.first_name,' ',u.first_name)) OVER (PARTITION BY c.id ORDER BY p.birthday DESC) AS oldest_user
+	, COUNT(cu.user_id) OVER (PARTITION BY cu.community_id) AS numb_of_users_in_gr
+	, COUNT(cu.user_id) OVER() as total_users
+	, (COUNT(cu.community_id) OVER (PARTITION BY cu.community_id) / COUNT(cu.user_id) OVER()) * 100 AS "%%"
+		 FROM communities c
+		 LEFT JOIN communities_users cu 
+		   ON c.id = cu.community_id
+		 LEFT JOIN profiles p
+		   ON p.user_id = cu.user_id 
+		 LEFT JOIN users u
+		   ON u.id = p.user_id
+ORDER BY name
+
+3. Задание на денормализацию
+	Разобраться как построен и работает следующий запрос:
+	Найти 10 пользователей, которые проявляют наименьшую активность в использовании социальной сети.
+
+ВЫБЕРИТЕ users.id,
+COUNT (DISTINCT messages.id) +
+COUNT (DISTINCT likes.id) +
+COUNT (DISTINCT media.id) AS деятельность
+ОТ пользователей
+LEFT JOIN сообщения
+ON users.id = messages.from_user_id
+LEFT JOIN нравится
+ON users.id = likes.user_id
+LEFT JOIN СМИ
+ON users.id = media.user_id
+GROUP BY users.id
+ЗАКАЗАТЬ ПО ДЕЯТЕЛЬНОСТИ
+LIMIT 10;
+	Правильно-ли он построен?
+--  Данный запрос работает верно, если считать за активность количество лайков, медиа данных и сообщений
+	
+SELECT u.id
+	, COUNT(DISTINCT l.id)
+	+ COUNT(DISTINCT m.id)
+	+ COUNT(DISTINCT ms.id)
+	AS total
+	FROM users u
+	LEFT JOIN messages ms 
+	ON ms.from_user_id = u.id 	
+	LEFT JOIN likes l
+	ON l.user_id = u.id
+	LEFT JOIN media m 
+	ON m.user_id = u.id 
+	GROUP BY u.id
+	ORDER BY total
+	LIMIT 10;
+
+	Какие изменения, включая денормализацию, можно внести в структуру БД чтобы существенно повысить скорость работы этого запроса?
+ 1) Сложно судить о скорости запроса, когда не знаешь, какая она на самом деле.
+ 2) Использовать индексы для таблиц
+ 3) Возможно совместить 3 таблицы (likes, messages, media)
+ 4) Возможно использовать хранимые процедуры или функции
