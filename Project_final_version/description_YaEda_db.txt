@@ -1,0 +1,208 @@
+Пример базы данных сервиса "Яндекс.Еда". Какой она могла бы быть.
+Данная БД позволяет хранить данные пользователей(заказчиков), данные ресторанов, производящих доставку еды, данные заказов пользователей. Так же при помощи данной БД можно смотреть данные о рейтинге ресторанов, менять рейтинг в зависимости от оценки пользователей и т.д. Данная БД позволяет производить анализ данных о заказах. И т.д. и т.п.
+
+
+ОПИСАНИЕ ТАБЛИЦ:
+В базе данных существует 15 таблиц:
+
+1. customers - реализует таблицу пользователей-заказчиков, содержит данные имени, фамилии, номера телефона и эл.почты, поле заказчика, его дне рождения и согласии на рассылку реклам и акции по sms и эл.почте (т.к. есть такая функуция в яндекс.еда) а так же когда этот пользователь зарегестрировался и когда последний раз изменял свои данные;
+
+2. addresses - реализует таблицу адрессов пользователей. Содержит 2 поля - id адреса и сам адрес в виде текста(для простоты). В этой таблице хранятся уникальные значения адресов пользователей. Т.к. у пользователя может быть неколько зарегесрированных адресов доставки, то целесообразно создать отдельно общую таблицу адресов и дополнительную таблицу связи пользователь-адрес;
+
+3. r_customers_addresses - таблица отношений пользователей и их адресов. Два поля: customer_id, address_id. Позволяет устанавливать связь между пользователями и его адресами.
+
+4. restaurants - таблица ресторанов, совершающих доставку. В данной таблице содержатся данные о: id ресторана, название ресторана, рейтинг ресторана, данные о привязки ресторана к Яндекс.Еда и данные об последнем изменении своих данных.
+
+5. restaurants_addresses - таблица адресов ресторанов: id адреса, id ресторана, адрес текстом, координаты (долгота, широта). Координаты нужны для определения близости ресторана к пользователю, что дает возможность выбирать пользователю доставку, которая скорее всего будет быстрой. 
+
+6. categories - таблица категорий еды, к которой относят себя рестораны и еда(например может быть американская кухня, европейская, фастфуд, бургеры, полезная еда и т.д.). Содержит 3 поля: id, category_name, created_at;
+
+7. r_restaurants_categories - таблица отношений ресторанов и категорий. Два поля: restaurant_id, category_id. Позволяет давать ресторану не только одну категорию еды.
+
+8. dishes - таблица блюд меню (например борщ, сэндвич с рыбой и т.д.). В данной таблице содержатся данные о: id данного элемента, его название, описание блюда меню, его рецепт, цена, вес, данные о добавлении в меню и данные об изменении блюда(created_at, updated_at);
+
+9. r_dishes_categories - таблица отношений блюд и категории еды. Например блюдо: бутерброд с красной икрой может относится к категории русская кузня и к категории рыба.
+
+10. r_restaurants_dishes - таблица отношений блюд и ресторанов. В данной таблице устанавливается свящь между ресторанами и блюдами, которые в нем есть.
+
+11. orders - таблица заказов. В данной таблице содержится: id заказа, id ресторана, id заказчика, время заказа, время доставки, id адреса заказчика, цена, вес заказа, id курьера, id способа оплаты;
+
+12. r_orders_dishes - таблица отношений блюд и заказа. В данной таблице содержится: id блюда, id заказа,  количество блюда;
+
+13. couriers - таблица курьеров. В ней содержатся их id, имена, рейтинг, телефон, created_at, updated_at;
+
+14. payments - таблица способов оплаты : id способа, название.;
+
+15. remoutless - таблица удаленности ресторана от пользователя. Имеет 5 значений расположения ресторана: очень горячо, горячо, тепло, холодно, очень холодно. Данная таблица ни с какой таблицей не связана. Она нужна для группирования ресторанов по типу близости к пользователю, т.е. у нас будут геоданные пользователя(долгота, широта), у нас есть координаты каждого ресторана и при помощи джойна этой таблицы можно будет группировать рестораны.
+
+СКРИПТЫ СОЗДАНИЯ ТАБЛИЦ:
+DROP DATABASE IF EXISTS yandex_eda_v1;
+CREATE DATABASE yandex_eda_v1;
+USE yandex_eda_v1;
+
+-- customers table
+DROP TABLE IF EXISTS customers;
+CREATE TABLE customers (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR(40) NOT NULL,
+	email VARCHAR(40) UNIQUE NOT NULL,
+	phone VARCHAR(15) UNIQUE NOT NULL,
+	gender ENUM ('male','female'),
+	birthday_at DATE,
+	ad_email TINYINT(1),
+	ad_sms TINYINT(1),
+	created_at DATETIME DEFAULT NOW(),
+	updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);
+-- 'customers' addresses
+DROP TABLE IF EXISTS addresses;
+CREATE TABLE addresses (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	address TEXT(100) NOT NULL
+);
+-- relation tables customers and addresses
+DROP TABLE IF EXISTS r_customers_addresses;
+CREATE TABLE r_customers_addresses (
+	customer_id INT UNSIGNED NOT NULL,
+	address_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (customer_id,address_id),
+	CONSTRAINT r_customers_addresses_customer_id_fk
+	FOREIGN KEY (customer_id) REFERENCES customers (id),
+	CONSTRAINT r_customers_addresses_address_id_fk
+	FOREIGN KEY (address_id) REFERENCES addresses (id)	
+);
+-- restaurants
+DROP TABLE IF EXISTS restaurants;
+CREATE TABLE restaurants (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR(30) NOT NULL,
+	restaurant_rating ENUM('1','2','3','4','5'),
+	created_at DATETIME DEFAULT NOW(),
+	updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);
+-- restaurants addresses
+DROP TABLE IF EXISTS restaurants_addresses;
+CREATE TABLE restaurants_addresses (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	restaurant_id INT UNSIGNED NOT NULL,
+	address TEXT NOT NULL,
+	longitude DECIMAL(5,2) NOT NULL,
+	latitude DECIMAL(5,2) NOT NULL,
+	CONSTRAINT restaurants_addresses_restaurant_id_fk
+	FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+);
+-- categories
+DROP TABLE IF EXISTS categories;
+CREATE TABLE categories (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR(40) NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW()
+);
+-- relation table restaurants and categories
+DROP TABLE IF EXISTS r_restaurants_categories;
+CREATE TABLE r_restaurants_categories (
+	restaurant_id INT UNSIGNED NOT NULL,
+	category_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (restaurant_id, category_id),
+	CONSTRAINT r_restaurants_categories_restaurant_id_fk
+	FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+	CONSTRAINT r_restaurants_categories_category_id_fk
+	FOREIGN KEY (category_id) REFERENCES categories (id)	
+);
+-- dishes
+DROP TABLE IF EXISTS dishes;
+CREATE TABLE dishes (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR (30) NOT NULL,
+	description TEXT,
+	recipe TEXT,
+	price DECIMAL(7,2) UNSIGNED NOT NULL,
+	weight INT UNSIGNED NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW(),
+	updated_at DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW()
+);
+-- relation table dishes and categories
+DROP TABLE IF EXISTS r_dishes_categories;
+CREATE TABLE r_dishes_categories (
+	dish_id INT UNSIGNED NOT NULL,
+	category_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (dish_id, category_id),
+	CONSTRAINT r_dishes_categories_dish_id_fk
+	FOREIGN KEY (dish_id) REFERENCES dishes (id),
+	CONSTRAINT r_dishes_categories_category_id_fk
+	FOREIGN KEY (category_id) REFERENCES categories (id)
+);
+-- relation table restaurants and dishes
+DROP TABLE IF EXISTS r_restaurants_dishes;
+CREATE TABLE r_restaurants_dishes (
+	restaurant_id INT UNSIGNED NOT NULL,
+	dish_id INT UNSIGNED NOT NULL,
+	PRIMARY KEY (restaurant_id, dish_id),
+	CONSTRAINT r_restaurants_dishes_restaurant_id_fk
+	FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+	CONSTRAINT r_restaurants_dishes_dish_id_fk
+	FOREIGN KEY (dish_id) REFERENCES dishes (id)
+);
+-- couriers
+DROP TABLE IF EXISTS couriers;
+CREATE TABLE couriers (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name VARCHAR (30) NOT NULL,
+	rating_courier ENUM ('1','2','3','4','5'),
+	phone VARCHAR(15) UNIQUE NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT NOW(),
+	updated_at DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW()
+);
+-- payments
+DROP TABLE IF EXISTS payments;
+CREATE TABLE payments (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	name ENUM('online and cary','cash and cary', 'online by card','courier and cash', 'courier and card')
+);
+-- remoutless
+DROP TABLE IF EXISTS remoutless;
+CREATE TABLE remoutless (
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	remoutless ENUM ('very hot', 'hot', 'warm', 'cold','very cold')
+);
+-- orders
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders(
+	id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	cost DECIMAL(12,3) UNSIGNED NOT NULL,
+	weight FLOAT UNSIGNED NOT NULL,
+	customer_id INT UNSIGNED NOT NULL,
+	address_id INT UNSIGNED NOT NULL,
+	restaurant_id INT UNSIGNED NOT NULL,
+	courier_id INT UNSIGNED NOT NULL,
+	payment_id INT UNSIGNED NOT NULL,
+	created_at DATETIME NOT NULL,
+	delivery_at DATETIME DEFAULT NOW(),
+	CONSTRAINT orders_customer_id_fk
+	FOREIGN KEY (customer_id) REFERENCES customers (id),
+	CONSTRAINT orders_address_id_fk
+	FOREIGN KEY (address_id) REFERENCES addresses (id),
+	CONSTRAINT orders_restaurant_id_fk
+	FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+	CONSTRAINT orders_courier_id_fk
+	FOREIGN KEY (courier_id) REFERENCES couriers (id),
+	CONSTRAINT orders_payment_id_fk
+	FOREIGN KEY (payment_id) REFERENCES payments (id)	
+);
+-- relation table r_orders_dishes
+DROP TABLE IF EXISTS r_orders_dishes;
+CREATE TABLE r_orders_dishes (
+	order_id INT UNSIGNED NOT NULL,
+	dish_id INT UNSIGNED NOT NULL,
+	quantity_dish SMALLINT UNSIGNED NOT NULL,
+	PRIMARY KEY (order_id, dish_id),
+	CONSTRAINT r_orders_dishes_order_id_fk
+	FOREIGN KEY (order_id) REFERENCES orders (id),
+	CONSTRAINT r_orders_dishes_dish_id_fk
+	FOREIGN KEY (dish_id) REFERENCES dishes (id)
+);
+
+
+-- INDEXES  customers
+CREATE UNIQUE INDEX customers_email_uq ON customers(email);
+CREATE UNIQUE INDEX customers_phone_uq ON customers(phone);
